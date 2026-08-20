@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Taxas - Sistema de Proteção</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f4f6f9;
+            min-height: 100vh;
+            padding: 20px;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%);
+            border-radius: 12px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(26, 58, 92, 0.3);
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.05em;
+            opacity: 0.95;
+        }
+
+        .cards-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e8ecf1;
+            transition: box-shadow 0.3s;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .card-title {
+            font-size: 1.25em;
+            color: #1a3a5c;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #e67e22;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 6px;
+            height: 24px;
+            background: #e67e22;
+            border-radius: 3px;
+        }
+
+        .tax-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .tax-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .tax-item label {
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.85em;
+        }
+
+        .tax-item input {
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.95em;
+            transition: all 0.3s;
+            background: #f8fafc;
+        }
+
+        .tax-item input:focus {
+            outline: none;
+            border-color: #2c5f8a;
+            box-shadow: 0 0 0 3px rgba(44, 95, 138, 0.15);
+            background: white;
+        }
+
+        .currency-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: bold;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+
+        .badge-brl { background: #27ae60; color: white; }
+        .badge-usd { background: #2980b9; color: white; }
+        .badge-eur { background: #e67e22; color: white; }
+
+        .ptax-section {
+            background: #f0f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2c5f8a;
+        }
+
+        .ptax-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .results-box {
+            background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%);
+            color: white;
+            padding: 18px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.95em;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .btn-calculate {
+            background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .btn-calculate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(26, 58, 92, 0.35);
+            background: linear-gradient(135deg, #2c5f8a 0%, #1a3a5c 100%);
+        }
+
+        .export-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e8ecf1;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .btn-export {
+            padding: 14px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-pdf { background: #c0392b; color: white; }
+        .btn-pdf:hover {
+            background: #a93226;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(192, 57, 43, 0.4);
+        }
+
+        .btn-excel { background: #27ae60; color: white; }
+        .btn-excel:hover {
+            background: #229954;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+        }
+
+        .info-text {
+            background: #fef9e7;
+            border-left: 4px solid #f39c12;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            color: #7d6608;
+            font-size: 0.9em;
+        }
+
+        .final-total {
+            background: linear-gradient(135deg, #16a085 0%, #1abc9c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .final-total h2 {
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .final-total .amount {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .profit-loss-box {
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 15px;
+            color: white;
+        }
+
+        .profit-box {
+            background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);
+        }
+
+        .loss-box {
+            background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+        }
+
+        .profit-loss-box h2 {
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .profit-loss-box .amount {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .division-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .partner-card {
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+        }
+
+        .partner-pgl {
+            background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%);
+        }
+
+        .partner-jtm {
+            background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
+        }
+
+        .partner-card h3 {
+            font-size: 1.05em;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .partner-card .value {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .partner-card .label {
+            font-size: 0.85em;
+            opacity: 0.95;
+        }
+
+        .remittance-box {
+            background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .remittance-box h3 {
+            font-size: 1.15em;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .remittance-box .amount {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .remittance-box .detail {
+            font-size: 0.9em;
+            margin-top: 8px;
+            opacity: 0.95;
+        }
+
+        @media (max-width: 700px) {
+            .tax-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .header h1 {
+                font-size: 1.6em;
+            }
+            .ptax-grid {
+                grid-template-columns: 1fr;
+            }
+            .division-grid {
+                grid-template-columns: 1fr;
+            }
+            .btn-group {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .tax-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Calculadora PGL - JTM</h1>
+            <p>Sistema de Cálculo de Taxas Marítimas</p>
+        </div>
+
+        <div class="cards-stack">
+            <!-- Parte 1: Taxas de Destino -->
+            <div class="card">
+                <h2 class="card-title">Parte 1 - Taxas de Destino</h2>
+                
+                <div class="info-text">
+                    <strong>💡</strong> Preencha as taxas. USD e EUR serão convertidos para BRL usando a P-Tax.
+                </div>
+
+                <div class="ptax-section">
+                    <h3 style="margin-bottom: 10px; color: #1a3a5c; font-size: 1em; font-weight: 600;">P-Tax do Dia</h3>
+                    <div class="ptax-grid">
+                        <div class="tax-item">
+                            <label>P-Tax Dólar <span class="currency-badge badge-usd">USD</span></label>
+                            <input type="number" id="ptaxUsd" step="0.0001" placeholder="Ex: 5.2500">
+                        </div>
+                        <div class="tax-item">
+                            <label>P-Tax Euro <span class="currency-badge badge-eur">EUR</span></label>
+                            <input type="number" id="ptaxEur" step="0.0001" placeholder="Ex: 5.7500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tax-grid">
+                    <div class="tax-item">
+                        <label>Taxa 1 <span class="currency-badge badge-brl">BRL</span></label>
+                        <input type="number" id="tax1" step="0.01" placeholder="R$ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 2 <span class="currency-badge badge-brl">BRL</span></label>
+                        <input type="number" id="tax2" step="0.01" placeholder="R$ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 3 <span class="currency-badge badge-brl">BRL</span></label>
+                        <input type="number" id="tax3" step="0.01" placeholder="R$ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 4 <span class="currency-badge badge-brl">BRL</span></label>
+                        <input type="number" id="tax4" step="0.01" placeholder="R$ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 5 <span class="currency-badge badge-brl">BRL</span></label>
+                        <input type="number" id="tax5" step="0.01" placeholder="R$ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 6 <span class="currency-badge badge-brl">BRL</span></label>
+                        <input type="number" id="tax6" step="0.01" placeholder="R$ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 7 <span class="currency-badge badge-brl">BRL</span></label>
+                        <input type="number" id="tax7" step="0.01" placeholder="R$ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 8 <span class="currency-badge badge-brl">BRL</span></label>
+                        <input type="number" id="tax8" step="0.01" placeholder="R$ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 9 <span class="currency-badge badge-brl">BRL</span></label>
+                        <input type="number" id="tax9" step="0.01" placeholder="R$ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 10 <span class="currency-badge badge-usd">USD</span></label>
+                        <input type="number" id="tax10" step="0.01" placeholder="US$ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 11 <span class="currency-badge badge-usd">USD</span></label>
+                        <input type="number" id="tax11" step="0.01" placeholder="US$ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 12 <span class="currency-badge badge-usd">USD</span></label>
+                        <input type="number" id="tax12" step="0.01" placeholder="US$ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 13 <span class="currency-badge badge-eur">EUR</span></label>
+                        <input type="number" id="tax13" step="0.01" placeholder="€ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 14 <span class="currency-badge badge-eur">EUR</span></label>
+                        <input type="number" id="tax14" step="0.01" placeholder="€ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Taxa 15 <span class="currency-badge badge-eur">EUR</span></label>
+                        <input type="number" id="tax15" step="0.01" placeholder="€ 0,00">
+                    </div>
+                </div>
+
+                <button class="btn-calculate" onclick="calcularParte1()">Calcular Taxas de Destino</button>
+
+                <div class="results-box" id="resultsParte1" style="display: none;">
+                    <div class="result-item">
+                        <span>Total Taxas em Real:</span>
+                        <span id="totalBrl">R$ 0,00</span>
+                    </div>
+                    <div class="result-item">
+                        <span>Taxas USD convertidas:</span>
+                        <span id="totalUsdBrl">R$ 0,00</span>
+                    </div>
+                    <div class="result-item">
+                        <span>Taxas EUR convertidas:</span>
+                        <span id="totalEurBrl">R$ 0,00</span>
+                    </div>
+                    <div class="result-item">
+                        <span>TOTAL EM REAL:</span>
+                        <span id="totalGeralBrl">R$ 0,00</span>
+                    </div>
+                    <div class="result-item">
+                        <span>TOTAL EM EURO:</span>
+                        <span id="totalGeralEur">€ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parte 2: Cálculo do Spread -->
+            <div class="card">
+                <h2 class="card-title">Parte 2 - Cálculo do Spread</h2>
+                
+                <div class="info-text">
+                    <strong>💡</strong> HAWB/BL + HANDL (fixo € 20,00). Spread de 3% sobre a base.
+                </div>
+
+                <div class="tax-grid">
+                    <div class="tax-item">
+                        <label>Valor HAWB/BL <span class="currency-badge badge-eur">EUR</span></label>
+                        <input type="number" id="hawbBl" step="0.01" placeholder="€ 0,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Valor HANDL <span class="currency-badge badge-eur">EUR</span></label>
+                        <input type="number" id="handl" step="0.01" value="20.00" placeholder="€ 20,00">
+                    </div>
+                    <div class="tax-item">
+                        <label>Percentual Spread (%)</label>
+                        <input type="number" id="spreadPercent" step="0.01" value="3.00" placeholder="3.00%">
+                    </div>
+                </div>
+
+                <button class="btn-calculate" onclick="calcularParte2()">Calcular Spread</button>
+
+                <div class="results-box" id="resultsParte2" style="display: none;">
+                    <div class="result-item">
+                        <span>Base (HAWB/BL + HANDL):</span>
+                        <span id="baseCalculo">€ 0,00</span>
+                    </div>
+                    <div class="result-item">
+                        <span>Spread (<span id="spreadPercentDisplay">3</span>%):</span>
+                        <span id="spreadValue">€ 0,00</span>
+                    </div>
+                    <div class="result-item">
+                        <span>TOTAL COM SPREAD:</span>
+                        <span id="totalSpread">€ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parte 3: Proteção -->
+            <div class="card">
+                <h2 class="card-title">Parte 3 - Cálculo da Proteção</h2>
+                
+                <div class="info-text">
+                    <strong>💡</strong> Proteção = Taxas locais (EUR) + Spread (EUR).
+                </div>
+
+                <button class="btn-calculate" onclick="calcularProtecao()">Calcular Proteção</button>
+
+                <div class="final-total" id="finalTotal" style="display: none;">
+                    <h2>VALOR TOTAL DA PROTEÇÃO</h2>
+                    <div class="amount" id="protecaoTotal">€ 0,00</div>
+                </div>
+            </div>
+
+            <!-- Parte 4: Profit/Loss e Divisão -->
+            <div class="card">
+                <h2 class="card-title">Parte 4 - Profit/Loss e Divisão</h2>
+                
+                <div class="info-text">
+                    <strong>💡</strong> Informe o custo (pago pelo parceiro JTM na origem). Profit/Loss = Venda - Custo. Após extrair a proteção, divide-se 50/50 entre PGL e JTM.
+                </div>
+
+                <div class="tax-grid">
+                    <div class="tax-item">
+                        <label>Custo na Origem <span class="currency-badge badge-eur">EUR</span></label>
+                        <input type="number" id="custoOrigem" step="0.01" placeholder="€ 0,00">
+                    </div>
+                </div>
+
+                <button class="btn-calculate" onclick="calcularProfitLoss()">Calcular Profit/Loss</button>
+
+                <div id="resultadoProfitLoss"></div>
+            </div>
+
+            <!-- Exportar Relatório -->
+            <div class="card">
+                <h2 class="card-title" style="justify-content: center;">Exportar Relatório</h2>
+                <div class="btn-group">
+                    <button class="btn-export btn-pdf" onclick="exportarPDF()">
+                        📄 Exportar PDF
+                    </button>
+                    <button class="btn-export btn-excel" onclick="exportarExcel()">
+                        📊 Exportar Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dadosCalculo = {
+            parte1: {},
+            parte2: {},
+            parte3: {},
+            parte4: {}
+        };
+
+        function formatCurrency(value, currency = 'BRL') {
+            const val = (value || 0).toFixed(2).replace('.', ',');
+            if (currency === 'BRL') return 'R$ ' + val;
+            if (currency === 'EUR') return '€ ' + val;
+            if (currency === 'USD') return 'US$ ' + val;
+            return val;
+        }
+
+        function calcularParte1() {
+            const ptaxUsd = parseFloat(document.getElementById('ptaxUsd').value) || 0;
+            const ptaxEur = parseFloat(document.getElementById('ptaxEur').value) || 0;
+
+            if (ptaxUsd === 0 || ptaxEur === 0) {
+                alert('Por favor, informe as P-Tax do Dólar e do Euro!');
+                return;
+            }
+
+            let totalBrl = 0;
+            for (let i = 1; i <= 9; i++) {
+                totalBrl += parseFloat(document.getElementById(`tax${i}`).value) || 0;
+            }
+
+            let totalUsd = 0;
+            for (let i = 10; i <= 12; i++) {
+                totalUsd += parseFloat(document.getElementById(`tax${i}`).value) || 0;
+            }
+            const totalUsdBrl = totalUsd * ptaxUsd;
+
+            let totalEur = 0;
+            for (let i = 13; i <= 15; i++) {
+                totalEur += parseFloat(document.getElementById(`tax${i}`).value) || 0;
+            }
+            const totalEurBrl = totalEur * ptaxEur;
+
+            const totalGeralBrl = totalBrl + totalUsdBrl + totalEurBrl;
+            const totalGeralEur = totalGeralBrl / ptaxEur;
+
+            document.getElementById('totalBrl').textContent = formatCurrency(totalBrl);
+            document.getElementById('totalUsdBrl').textContent = formatCurrency(totalUsdBrl);
+            document.getElementById('totalEurBrl').textContent = formatCurrency(totalEurBrl);
+            document.getElementById('totalGeralBrl').textContent = formatCurrency(totalGeralBrl);
+            document.getElementById('totalGeralEur').textContent = formatCurrency(totalGeralEur, 'EUR');
+            document.getElementById('resultsParte1').style.display = 'block';
+
+            dadosCalculo.parte1 = {
+                ptaxUsd, ptaxEur, totalBrl, totalUsd, totalUsdBrl,
+                totalEur, totalEurBrl, totalGeralBrl, totalGeralEur,
+                taxas: []
+            };
+
+            for (let i = 1; i <= 15; i++) {
+                const value = parseFloat(document.getElementById(`tax${i}`).value) || 0;
+                let currency = 'BRL';
+                if (i >= 10 && i <= 12) currency = 'USD';
+                if (i >= 13 && i <= 15) currency = 'EUR';
+                dadosCalculo.parte1.taxas.push({ nome: `Taxa ${i}`, valor: value, moeda: currency });
+            }
+        }
+
+        function calcularParte2() {
+            const hawbBl = parseFloat(document.getElementById('hawbBl').value) || 0;
+            const handl = parseFloat(document.getElementById('handl').value) || 0;
+            const spreadPercent = parseFloat(document.getElementById('spreadPercent').value) || 3;
+
+            const baseCalculo = hawbBl + handl;
+            const spreadValue = baseCalculo * (spreadPercent / 100);
+            const totalSpread = baseCalculo + spreadValue;
+
+            document.getElementById('baseCalculo').textContent = formatCurrency(baseCalculo, 'EUR');
+            document.getElementById('spreadPercentDisplay').textContent = spreadPercent;
+            document.getElementById('spreadValue').textContent = formatCurrency(spreadValue, 'EUR');
+            document.getElementById('totalSpread').textContent = formatCurrency(totalSpread, 'EUR');
+            document.getElementById('resultsParte2').style.display = 'block';
+
+            dadosCalculo.parte2 = {
+                hawbBl, handl, spreadPercent, baseCalculo, spreadValue, totalSpread
+            };
+        }
+
+        function calcularProtecao() {
+            if (!dadosCalculo.parte1.totalGeralEur) {
+                alert('Calcule primeiro as Taxas de Destino (Parte 1)!');
+                return;
+            }
+            if (!dadosCalculo.parte2.spreadValue) {
+                alert('Calcule primeiro o Spread (Parte 2)!');
+                return;
+            }
+
+            const protecaoTotal = dadosCalculo.parte1.totalGeralEur + dadosCalculo.parte2.spreadValue;
+
+            document.getElementById('protecaoTotal').textContent = formatCurrency(protecaoTotal, 'EUR');
+            document.getElementById('finalTotal').style.display = 'block';
+
+            dadosCalculo.parte3 = {
+                taxasLocaisEur: dadosCalculo.parte1.totalGeralEur,
+                spreadEur: dadosCalculo.parte2.spreadValue,
+                protecaoTotal
+            };
+        }
+
+        function calcularProfitLoss() {
+            if (!dadosCalculo.parte2.baseCalculo) {
+                alert('Calcule primeiro o Spread (Parte 2)!');
+                return;
+            }
+            if (!dadosCalculo.parte3.protecaoTotal) {
+                alert('Calcule primeiro a Proteção (Parte 3)!');
+                return;
+            }
+
+            const custo = parseFloat(document.getElementById('custoOrigem').value) || 0;
+            if (custo === 0) {
+                alert('Informe o custo na origem!');
+                return;
+            }
+
+            const venda = dadosCalculo.parte2.baseCalculo;
+            const profitLoss = venda - custo;
+            const protecao = dadosCalculo.parte3.protecaoTotal;
+            const resultadoAposProtecao = profitLoss - protecao;
+            const metade = resultadoAposProtecao / 2;
+
+            const isProfit = profitLoss >= 0;
+            const tipoLabel = isProfit ? 'PROFIT' : 'LOSS';
+
+            let remeterJTM = custo + metade;
+
+            const profitPGL = metade;
+            const profitJTM = metade;
+
+            const container = document.getElementById('resultadoProfitLoss');
+            container.innerHTML = `
+                <div class="profit-loss-box ${isProfit ? 'profit-box' : 'loss-box'}">
+                    <h2>${tipoLabel} / LOSS</h2>
+                    <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">
+                        Venda: ${formatCurrency(venda, 'EUR')} | Custo: ${formatCurrency(custo, 'EUR')}
+                    </div>
+                    <div class="amount">${formatCurrency(profitLoss, 'EUR')}</div>
+                    <div style="font-size: 0.9em; margin-top: 10px; opacity: 0.95;">
+                        Após extrair proteção (${formatCurrency(protecao, 'EUR')}): 
+                        <strong>${formatCurrency(resultadoAposProtecao, 'EUR')}</strong>
+                    </div>
+                </div>
+
+                <div class="division-grid">
+                    <div class="partner-card partner-pgl">
+                        <h3>👤 PGL (Você)</h3>
+                        <div class="label">${isProfit ? 'Profit' : 'Loss'} (50%)</div>
+                        <div class="value">${formatCurrency(profitPGL, 'EUR')}</div>
+                    </div>
+                    <div class="partner-card partner-jtm">
+                        <h3> JTM (Parceiro)</h3>
+                        <div class="label">${isProfit ? 'Profit' : 'Loss'} (50%)</div>
+                        <div class="value">${formatCurrency(profitJTM, 'EUR')}</div>
+                    </div>
+                </div>
+
+                <div class="remittance-box">
+                    <h3> Valor a Remeter ao Parceiro JTM</h3>
+                    <div class="amount">${formatCurrency(remeterJTM, 'EUR')}</div>
+                    <div class="detail">
+                        ${isProfit 
+                            ? `Custo (${formatCurrency(custo, 'EUR')}) + Profit JTM (${formatCurrency(profitJTM, 'EUR')})`
+                            : `Custo (${formatCurrency(custo, 'EUR')}) - Loss JTM (${formatCurrency(Math.abs(profitJTM), 'EUR')})`
+                        }
+                    </div>
+                </div>
+            `;
+
+            dadosCalculo.parte4 = {
+                venda,
+                custo,
+                profitLoss,
+                protecao,
+                resultadoAposProtecao,
+                metade,
+                profitPGL,
+                profitJTM,
+                remeterJTM,
+                isProfit,
+                tipoLabel
+            };
+        }
+
+        function exportarPDF() {
+            if (!dadosCalculo.parte4.protecao) {
+                alert('Calcule todas as partes antes de exportar!');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let yPos = 20;
+
+            doc.setFontSize(18);
+            doc.setTextColor(26, 58, 92);
+            doc.text('Relatório Completo de Cálculo', 105, yPos, { align: 'center' });
+            yPos += 8;
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 105, yPos, { align: 'center' });
+            yPos += 12;
+
+            doc.setFontSize(13);
+            doc.setTextColor(26, 58, 92);
+            doc.text('PARTE 1 - TAXAS DE DESTINO', 20, yPos);
+            yPos += 7;
+            doc.setFontSize(9);
+            doc.setTextColor(0);
+            doc.text(`P-Tax USD: ${formatCurrency(dadosCalculo.parte1.ptaxUsd)} | P-Tax EUR: ${formatCurrency(dadosCalculo.parte1.ptaxEur)}`, 20, yPos);
+            yPos += 6;
+
+            doc.autoTable({
+                startY: yPos,
+                head: [['Taxa', 'Valor', 'Moeda']],
+                body: dadosCalculo.parte1.taxas.map(t => [
+                    t.nome,
+                    t.moeda === 'BRL' ? formatCurrency(t.valor) :
+                    t.moeda === 'USD' ? formatCurrency(t.valor, 'USD') :
+                    formatCurrency(t.valor, 'EUR'),
+                    t.moeda
+                ]),
+                theme: 'striped',
+                headStyles: { fillColor: [26, 58, 92], fontSize: 9 },
+                styles: { fontSize: 8 }
+            });
+
+            yPos = doc.lastAutoTable.finalY + 6;
+            doc.setFontSize(9);
+            doc.setTextColor(0);
+            doc.text(`Total BRL: ${formatCurrency(dadosCalculo.parte1.totalBrl)} | USD→BRL: ${formatCurrency(dadosCalculo.parte1.totalUsdBrl)} | EUR→BRL: ${formatCurrency(dadosCalculo.parte1.totalEurBrl)}`, 20, yPos);
+            yPos += 5;
+            doc.setFont(undefined, 'bold');
+            doc.text(`TOTAL GERAL BRL: ${formatCurrency(dadosCalculo.parte1.totalGeralBrl)} | TOTAL EUR: ${formatCurrency(dadosCalculo.parte1.totalGeralEur, 'EUR')}`, 20, yPos);
+            yPos += 10;
+
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(13);
+            doc.setTextColor(26, 58, 92);
+            doc.text('PARTE 2 - SPREAD', 20, yPos);
+            yPos += 7;
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(0);
+            doc.text(`HAWB/BL: ${formatCurrency(dadosCalculo.parte2.hawbBl, 'EUR')} | HANDL: ${formatCurrency(dadosCalculo.parte2.handl, 'EUR')}`, 20, yPos);
+            yPos += 5;
+            doc.text(`Base: ${formatCurrency(dadosCalculo.parte2.baseCalculo, 'EUR')} | Spread (${dadosCalculo.parte2.spreadPercent}%): ${formatCurrency(dadosCalculo.parte2.spreadValue, 'EUR')}`, 20, yPos);
+            yPos += 5;
+            doc.setFont(undefined, 'bold');
+            doc.text(`Total com Spread: ${formatCurrency(dadosCalculo.parte2.totalSpread, 'EUR')}`, 20, yPos);
+            yPos += 10;
+
+            doc.setFontSize(13);
+            doc.setTextColor(26, 58, 92);
+            doc.text('PARTE 3 - PROTEÇÃO', 20, yPos);
+            yPos += 7;
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(0);
+            doc.text(`Taxas Locais (EUR): ${formatCurrency(dadosCalculo.parte3.taxasLocaisEur, 'EUR')} | Spread (EUR): ${formatCurrency(dadosCalculo.parte3.spreadEur, 'EUR')}`, 20, yPos);
+            yPos += 5;
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(22, 160, 133);
+            doc.text(`TOTAL PROTEÇÃO: ${formatCurrency(dadosCalculo.parte3.protecaoTotal, 'EUR')}`, 20, yPos);
+            yPos += 10;
+
+            doc.setTextColor(26, 58, 92);
+            doc.setFontSize(13);
+            doc.text('PARTE 4 - PROFIT/LOSS E DIVISÃO', 20, yPos);
+            yPos += 7;
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(0);
+            doc.text(`Venda: ${formatCurrency(dadosCalculo.parte4.venda, 'EUR')} | Custo: ${formatCurrency(dadosCalculo.parte4.custo, 'EUR')}`, 20, yPos);
+            yPos += 5;
+            
+            if (dadosCalculo.parte4.isProfit) {
+                doc.setTextColor(41, 128, 185);
+            } else {
+                doc.setTextColor(192, 57, 43);
+            }
+            doc.setFont(undefined, 'bold');
+            doc.text(`${dadosCalculo.parte4.tipoLabel}: ${formatCurrency(dadosCalculo.parte4.profitLoss, 'EUR')}`, 20, yPos);
+            yPos += 5;
+            
+            doc.setTextColor(0);
+            doc.setFont(undefined, 'normal');
+            doc.text(`Após Proteção (${formatCurrency(dadosCalculo.parte4.protecao, 'EUR')}): ${formatCurrency(dadosCalculo.parte4.resultadoAposProtecao, 'EUR')}`, 20, yPos);
+            yPos += 5;
+            doc.text(`Divisão 50/50 - PGL: ${formatCurrency(dadosCalculo.parte4.profitPGL, 'EUR')} | JTM: ${formatCurrency(dadosCalculo.parte4.profitJTM, 'EUR')}`, 20, yPos);
+            yPos += 7;
+            
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(11);
+            doc.setTextColor(230, 126, 34);
+            doc.text(`VALOR A REMETER AO PARCEIRO JTM: ${formatCurrency(dadosCalculo.parte4.remeterJTM, 'EUR')}`, 20, yPos);
+
+            doc.save(`Relatorio_Completo_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+
+        function exportarExcel() {
+            if (!dadosCalculo.parte4.protecao) {
+                alert('Calcule todas as partes antes de exportar!');
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            const ws1Data = [
+                ['PARTE 1 - TAXAS DE DESTINO'],
+                [],
+                ['P-Tax USD:', dadosCalculo.parte1.ptaxUsd],
+                ['P-Tax EUR:', dadosCalculo.parte1.ptaxEur],
+                [],
+                ['Taxa', 'Valor', 'Moeda']
+            ];
+            dadosCalculo.parte1.taxas.forEach(t => ws1Data.push([t.nome, t.valor, t.moeda]));
+            ws1Data.push([]);
+            ws1Data.push(['Total BRL:', dadosCalculo.parte1.totalBrl]);
+            ws1Data.push(['Total USD→BRL:', dadosCalculo.parte1.totalUsdBrl]);
+            ws1Data.push(['Total EUR→BRL:', dadosCalculo.parte1.totalEurBrl]);
+            ws1Data.push(['TOTAL GERAL BRL:', dadosCalculo.parte1.totalGeralBrl]);
+            ws1Data.push(['TOTAL GERAL EUR:', dadosCalculo.parte1.totalGeralEur]);
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws1Data), 'Taxas');
+
+            const ws2Data = [
+                ['PARTE 2 - SPREAD'],
+                [],
+                ['HAWB/BL:', dadosCalculo.parte2.hawbBl, 'EUR'],
+                ['HANDL:', dadosCalculo.parte2.handl, 'EUR'],
+                ['Base:', dadosCalculo.parte2.baseCalculo, 'EUR'],
+                [`Spread (${dadosCalculo.parte2.spreadPercent}%):`, dadosCalculo.parte2.spreadValue, 'EUR'],
+                ['Total com Spread:', dadosCalculo.parte2.totalSpread, 'EUR']
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws2Data), 'Spread');
+
+            const ws3Data = [
+                ['PARTE 3 - PROTEÇÃO'],
+                [],
+                ['Taxas Locais (EUR):', dadosCalculo.parte3.taxasLocaisEur, 'EUR'],
+                ['Spread (EUR):', dadosCalculo.parte3.spreadEur, 'EUR'],
+                [],
+                ['TOTAL PROTEÇÃO:', dadosCalculo.parte3.protecaoTotal, 'EUR']
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws3Data), 'Proteção');
+
+            const ws4Data = [
+                ['PARTE 4 - PROFIT/LOSS E DIVISÃO'],
+                [],
+                ['Venda (HAWB/BL + HANDL):', dadosCalculo.parte4.venda, 'EUR'],
+                ['Custo:', dadosCalculo.parte4.custo, 'EUR'],
+                [dadosCalculo.parte4.tipoLabel + ':', dadosCalculo.parte4.profitLoss, 'EUR'],
+                ['Proteção:', dadosCalculo.parte4.protecao, 'EUR'],
+                ['Resultado após Proteção:', dadosCalculo.parte4.resultadoAposProtecao, 'EUR'],
+                [],
+                ['DIVISÃO 50/50'],
+                ['PGL (Você):', dadosCalculo.parte4.profitPGL, 'EUR'],
+                ['JTM (Parceiro):', dadosCalculo.parte4.profitJTM, 'EUR'],
+                [],
+                ['VALOR A REMETER AO PARCEIRO JTM:', dadosCalculo.parte4.remeterJTM, 'EUR']
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws4Data), 'Profit-Loss');
+
+            XLSX.writeFile(wb, `Relatorio_Completo_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+    </script>
+</body>
+</html>
